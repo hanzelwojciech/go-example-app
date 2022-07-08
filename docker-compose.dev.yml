@@ -1,0 +1,38 @@
+version: "3.8"
+
+volumes:
+  go-modules:
+
+services:
+  database:
+    container_name: database
+    image: postgres:14.2
+    restart: on-failure
+    ports:
+      - "${POSTGRES_PORT:-5432}:5432"
+    environment:
+      POSTGRES_USER: '${POSTGRES_USER}'
+      POSTGRES_PASSWORD: '${POSTGRES_PASSWORD}'
+      POSTGRES_DB: '${POSTGRES_DATABASE}'
+    volumes:
+      - "./db-init.sql:/docker-entrypoint-initdb.d/init.sql"
+  backend:
+    container_name: backend
+    image: golang:1.17.7-alpine3.15
+    working_dir: /usr/app
+    command: "go run main.go"
+    env_file:
+      - .env
+    environment:
+      CHOKIDAR_USEPOLLING: 1
+      CHOKIDAR_POLLINTERVAL: 3000
+      PATH: "/usr/local/go/bin:${PATH}"
+      POSTGRES_HOST: database
+    restart: on-failure
+    ports:
+      - 8080:8080
+    volumes:
+      - "./backend:/usr/app"
+      - "go-modules:/go/pkg/mod"
+    depends_on:
+      - database
